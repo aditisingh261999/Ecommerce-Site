@@ -27,8 +27,44 @@ const getaProduct = asyncHandler(async (req, res, next) => {
 
 const getAllProducts = asyncHandler(async (req, res, next) => {
   try {
-    const allProducts = await Product.find();
-    res.json(allProducts);
+    // Filtering out products
+    const queryObj = { ...req.query };
+    const excludeFields = ["page", "sort", "limit", "fields"];
+    excludeFields.forEach((ele) => delete queryObj[ele]);
+    let queryString = JSON.stringify(queryObj);
+    queryString = queryString.replace(
+      /\b(gte|gt|lte|lt)\b/g,
+      (match) => `$${match}`
+    );
+
+    let query = await Product.find(JSON.parse(queryString));
+
+    // Sorting
+    if (req.query.sort) {
+      const sortBy = req.query.sort.split(",").join(" ");
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort({ createdAt: -1 });
+    }
+
+    // Limiting the fields
+    if (req.query.fields) {
+      const fields = req.query.fields().split(",").join(" ");
+      query = query.select(fields);
+    } else {
+      query = query.select("-_id -__v");
+    }
+
+    // Pagination
+    if (req.query.page && req.query.limit) {
+      const page = parseInt(req.query.page, 10);
+      const limit = parseInt(req.query.limit, 10);
+      const skip = page * limit;
+      query = query.skip(skip).limit(limit);
+    }
+
+    const product = await query;
+    res.json(product);
   } catch (error) {
     throw new Error(error.message);
   }
