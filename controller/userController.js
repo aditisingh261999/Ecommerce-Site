@@ -3,8 +3,9 @@ const User = require("../models/userModels");
 const asyncHandler = require("express-async-handler");
 const { validateMongoDbId } = require("../utils/validateMongoDbId");
 const { generateRefreshToken } = require("../config/refreshToken");
-const { use } = require("../routes/authRoutes");
 const jwt = require("jsonwebtoken");
+const sendEmail = require("./emailController");
+const crypto = require("crypto");
 
 // register user
 const register = asyncHandler(async (req, res, next) => {
@@ -226,6 +227,7 @@ const unblockUser = asyncHandler(async (req, res, next) => {
   }
 });
 
+// update password for a user
 const updatePassword = asyncHandler(async (req, res, next) => {
   const { _id } = req.user;
   validateMongoDbId(_id);
@@ -246,6 +248,59 @@ const updatePassword = asyncHandler(async (req, res, next) => {
   }
 });
 
+// forget password token
+const forgetPasswordToken = asyncHandler(async (req, res, next) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      res.status(400).json({
+        message: "User not found",
+      });
+    } else {
+      const token = await user.createPasswordResetToken();
+      await user.save();
+      const resetUrl = `Hi, please follow this link to reset your password. <a href='http://localhost:4000/api/v1/users/reset-password/${token}'>Click</a>`;
+      const data = {
+        to: email,
+        text: "Your password",
+        subject: "Password Reset",
+        html: resetUrl,
+      };
+      sendEmail(data);
+      res.status(200).json(token);
+    }
+  } catch (error) {
+    throw new Error(error);
+  }
+});
+
+// reset password
+const resetPassword = asyncHandler(async (req, res, next) => {
+  const { password } = req.body;
+  const { token } = req.params;
+  try {
+    const hashToken = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await User.findOne({
+      passwordResetToken: hashToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+    if (!user) {
+      res.status(400).json({
+        message: "Password reset token is invalid or has expired",
+      });
+    } else {
+      user.password = password;
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      const updatedPassword = await user.save();
+      res.status(200).json(updatedPassword);
+    }
+  } catch (error) {
+    res.status(400).json("UNable to reset password");
+  }
+});
+
 module.exports = {
   register,
   loginUser,
@@ -258,4 +313,6 @@ module.exports = {
   handleRefreshToken,
   logoutUser,
   updatePassword,
+  forgetPasswordToken,
+  resetPassword,
 };
