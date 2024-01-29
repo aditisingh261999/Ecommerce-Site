@@ -4,9 +4,10 @@ const bodyParser = require("body-parser");
 const dotenv = require("dotenv").config();
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 const PORT = process.env.PORT || 4000;
-const authRoute = require("./routes/authRoutes");
 const cookieParser = require("cookie-parser");
+const authRoute = require("./routes/authRoutes");
 const productRoute = require("./routes/productRoutes");
+const blogRoute = require("./routes/blogRoutes");
 const morgan = require("morgan");
 
 const app = express();
@@ -19,6 +20,7 @@ app.use(cookieParser());
 
 app.use("/api/v1/users", authRoute);
 app.use("/api/v1/products", productRoute);
+app.use("/api/v1/blogs", blogRoute);
 
 app.use(notFound);
 app.use(errorHandler);
