@@ -51,6 +51,10 @@ var productSchema = new mongoose.Schema(
         ref: "User",
       },
     },
+    totalratings: {
+      type: String,
+      default: 0,
+    },
   },
   {
     timestamps: true,
