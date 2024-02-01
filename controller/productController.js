@@ -1,4 +1,5 @@
 const Product = require("../models/productModels");
+const User = require("../models/userModels");
 const asyncHandler = require("express-async-handler");
 const slugify = require("slugify");
 
@@ -96,10 +97,62 @@ const deleteProduct = asyncHandler(async (req, res, next) => {
   }
 });
 
+// add to wishlist
+const addToWishList = asyncHandler(async (req, res) => {
+  const { _id } = req.user;
+  const { prodId } = req.body;
+  try {
+    //check if user already exists
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    //check if profuct is already added to whishlist or not
+    const alreadyAdded = user.wishlist.find((id) => id.toString() === prodId);
+    if (alreadyAdded) {
+      let user = await User.findByIdAndUpdate(
+        id,
+        {
+          $pull: {
+            wishlist: prodId,
+          },
+          $inc: {
+            "wishlist.length": -1,
+          },
+        },
+        {
+          new: true,
+        }
+      );
+    } else {
+      let user = await User.findByIdAndUpdate(
+        id,
+        {
+          $addToSet: {
+            wishlist: prodId,
+          },
+          $inc: {
+            "wishlist.length": 1,
+          },
+        },
+        {
+          new: true,
+        }
+      );
+    }
+  } catch (error) {
+    throw new Error(error.message);
+  }
+});
+
 module.exports = {
   getaProduct,
   updateProduct,
   createProduct,
   getAllProducts,
   deleteProduct,
+  addToWishList,
 };
