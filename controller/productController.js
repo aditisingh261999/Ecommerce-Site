@@ -18,6 +18,7 @@ const createProduct = asyncHandler(async (req, res, next) => {
   }
 });
 
+
 const getaProduct = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   validateMongoDbId(id);
